@@ -21,13 +21,15 @@ class OpenFDAError(Exception):
     """Сервис недоступен или ответил ошибкой."""
 
 
-def get(endpoint, search=None, count=None, limit=1):
+def get(endpoint, search=None, count=None, limit=1, skip=0):
     """GET к openFDA. Возвращает JSON или None, если ничего не найдено (404)."""
     params = {"limit": limit}
     if search:
         params["search"] = search
     if count:
         params["count"] = count
+    if skip:
+        params["skip"] = skip
     if API_KEY:
         params["api_key"] = API_KEY
 

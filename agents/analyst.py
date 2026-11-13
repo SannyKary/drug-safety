@@ -127,6 +127,8 @@ def compare(labels, faers, reaction_totals, n_all):
 
         if process:
             verdict = "служебная запись"
+        elif stat_signal and mentioned is None:
+            verdict = "выделяется (нет инструкции для сверки)"
         elif stat_signal and mentioned is False:
             verdict = "кандидат в сигнал"
         elif stat_signal:
@@ -146,7 +148,35 @@ def compare(labels, faers, reaction_totals, n_all):
             "in_label": mentioned,
             "verdict": verdict,
         })
+    _mark_series(rows, faers["n_reports"])
     return rows
+
+
+SERIES_MIN_SIZE = 4      # сколько реакций с одинаковым числом сообщений уже подозрительно
+SERIES_TOLERANCE = 0.03  # «одинаковое» = отличается не больше чем на 3%
+SERIES_MIN_SHARE = 0.10  # и каждая встречается хотя бы в 10% сообщений
+
+
+def _mark_series(rows, n_reports):
+    """Ищет «серию»: много разных реакций с почти одинаковым числом сообщений.
+
+    Так выглядит один случай, присланный много раз (например, описанный
+    в статье и отправленный каждым производителем). Такие кандидаты в сигнал
+    помечаются отдельно, чтобы не выдавать дубли за сигнал.
+    """
+    clinical = [r for r in rows if r["verdict"] != "служебная запись"
+                and r["reports"] >= SERIES_MIN_SHARE * n_reports]
+    best = []
+    for anchor in clinical:
+        group = [r for r in clinical
+                 if abs(r["reports"] - anchor["reports"]) <= SERIES_TOLERANCE * anchor["reports"]]
+        if len(group) > len(best):
+            best = group
+    if len(best) >= SERIES_MIN_SIZE:
+        for r in best:
+            r["series"] = True
+            if r["verdict"] == "кандидат в сигнал":
+                r["verdict"] = "возможная серия дублей"
 
 
 def interaction_mentions(labels):

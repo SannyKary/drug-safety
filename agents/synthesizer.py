@@ -37,8 +37,10 @@ def build_facts(labels, routed, faers, rows, interactions):
     if faers:
         parts.append(
             f"## FAERS: {' + '.join(faers['drugs'])}\n"
-            f"Всего сообщений: {_fmt(faers['n_reports'])}; серьёзных: {_fmt(faers['n_serious'])}; "
+            f"Уникальных случаев: {_fmt(faers['n_reports'])}; серьёзных: {_fmt(faers['n_serious'])}; "
             f"с исходом смерть: {_fmt(faers['n_deaths'])}."
+            + (f" Исходно сообщений {_fmt(faers['n_raw'])}, дублей склеено {_fmt(faers['n_duplicates'])}."
+               if faers.get("deduplicated") else " Дубли не склеивались.")
         )
         lines = []
         for r in rows:
@@ -57,7 +59,9 @@ def build_facts(labels, routed, faers, rows, interactions):
 def allowed_numbers(faers, rows):
     nums = set()
     if faers:
-        nums |= {faers["n_reports"], faers["n_serious"], faers["n_deaths"]}
+        nums |= {faers["n_reports"], faers["n_serious"], faers["n_deaths"], faers.get("n_raw", 0)}
+        if faers.get("n_duplicates"):
+            nums.add(faers["n_duplicates"])
     for r in rows:
         nums.add(r["reports"])
     return nums
@@ -103,6 +107,7 @@ PROMPT = """Ты помощник клинического фармаколог�
 4. FAERS — спонтанные сообщения, они не доказывают причину. Пиши «сообщают о…»,
    а не «вызывает».
 5. Если реакция — «кандидат в сигнал», так и назови: повод для проверки.
+   «Возможная серия дублей» — не сигнал: скорее всего, один случай прислан много раз.
 6. Числа бери только из данных. Не давай рекомендаций по лечению.
 
 ФАКТЫ:
@@ -153,8 +158,11 @@ def fallback_summary(labels, routed, faers, rows, interactions):
         out.append(f"- Инструкция {it['in_label_of']} упоминает {it['mentions']} в разделе взаимодействий. [Инструкция: Взаимодействия]")
     if faers:
         out.append(
-            f"- В FAERS {_fmt(faers['n_reports'])} сообщений, из них серьёзных {_fmt(faers['n_serious'])}. {FAERS_TAG}"
+            f"- В FAERS {_fmt(faers['n_reports'])} уникальных случаев, из них серьёзных {_fmt(faers['n_serious'])}. {FAERS_TAG}"
         )
+        series = [r["reaction"] for r in rows if r["verdict"] == "возможная серия дублей"]
+        if series:
+            out.append(f"- Похоже на серию дублей, в сигналы не включены: {', '.join(series)}. {ANALYSIS_TAG}")
         cands = [r["reaction"] for r in rows if r["verdict"] == "кандидат в сигнал"]
         if cands:
             out.append(f"- Кандидаты в сигнал (часто сообщают, в инструкции не найдено): {', '.join(cands)}. {ANALYSIS_TAG}")
