@@ -77,6 +77,13 @@ def models():
     return ranked[:4]
 
 
+def _demote(model):
+    """Отодвигает перегруженную модель в конец очереди."""
+    global _chosen_model
+    if _chosen_model and model in _chosen_model:
+        _chosen_model = [m for m in _chosen_model if m != model] + [model]
+
+
 def model_name():
     return models()[0]
 
@@ -125,6 +132,8 @@ def ask(prompt, temperature=0.2, json_mode=False):
             if resp.status_code in (429, 500, 503) and attempt == 0:
                 time.sleep(3)
                 continue
+            if resp.status_code in (429, 500, 503):
+                _demote(model)  # перегружена — следующие вызовы начнут с запасной
             if resp.status_code in (400, 401, 403):
                 last_error = errors[-1]  # проблема с ключом — запасные модели не помогут
                 return None

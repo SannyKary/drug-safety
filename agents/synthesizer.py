@@ -56,8 +56,10 @@ def build_facts(labels, routed, faers, rows, interactions):
     return "\n\n".join(parts)
 
 
-def allowed_numbers(faers, rows):
-    nums = set()
+def allowed_numbers(faers, rows, facts=""):
+    """Числа, которые модели можно упоминать: всё, что есть в фактах."""
+    nums = {int(re.sub(r"\D", "", n)) for n in re.findall(r"\d[\d \u00a0\u202f]*\d|\d", facts)
+            if re.sub(r"\D", "", n)}
     if faers:
         nums |= {faers["n_reports"], faers["n_serious"], faers["n_deaths"], faers.get("n_raw", 0)}
         if faers.get("n_duplicates"):
