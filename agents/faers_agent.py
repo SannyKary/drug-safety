@@ -18,8 +18,8 @@ from . import openfda
 SOURCE_NAME = "FAERS (сообщения о нежелательных реакциях)"
 ENDPOINT = "drug/event"
 REACTION_FIELD = "patient.reaction.reactionmeddrapt.exact"
-DEDUP_LIMIT = 1000
-PAGE = 250
+DEDUP_LIMIT = 3000
+PAGE = 500
 
 
 def drug_search(drugs):
@@ -46,10 +46,13 @@ def _fingerprint(report):
 
 def _deduplicate(search, n_reports):
     """Скачивает сообщения, склеивает дубли, считает реакции по случаям."""
-    reports = []
-    for skip in range(0, n_reports, PAGE):
+    # Страницы независимы — качаем параллельно
+    def page(skip):
         data = openfda.get(ENDPOINT, search=search, limit=PAGE, skip=skip)
-        reports += (data or {}).get("results", [])
+        return (data or {}).get("results", [])
+
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        reports = [r for chunk in pool.map(page, range(0, n_reports, PAGE)) for r in chunk]
 
     cases = {}
     for r in reports:

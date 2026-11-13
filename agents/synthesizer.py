@@ -37,7 +37,7 @@ def build_facts(labels, routed, faers, rows, interactions):
     if faers:
         parts.append(
             f"## FAERS: {' + '.join(faers['drugs'])}\n"
-            f"Уникальных случаев: {_fmt(faers['n_reports'])}; серьёзных: {_fmt(faers['n_serious'])}; "
+            f"{'Уникальных случаев' if faers.get('deduplicated') else 'Сообщений'}: {_fmt(faers['n_reports'])}; серьёзных: {_fmt(faers['n_serious'])}; "
             f"с исходом смерть: {_fmt(faers['n_deaths'])}."
             + (f" Исходно сообщений {_fmt(faers['n_raw'])}, дублей склеено {_fmt(faers['n_duplicates'])}."
                if faers.get("deduplicated") else " Дубли не склеивались.")
@@ -158,7 +158,7 @@ def fallback_summary(labels, routed, faers, rows, interactions):
         out.append(f"- Инструкция {it['in_label_of']} упоминает {it['mentions']} в разделе взаимодействий. [Инструкция: Взаимодействия]")
     if faers:
         out.append(
-            f"- В FAERS {_fmt(faers['n_reports'])} уникальных случаев, из них серьёзных {_fmt(faers['n_serious'])}. {FAERS_TAG}"
+            f"- В FAERS {_fmt(faers['n_reports'])} {'уникальных случаев' if faers.get('deduplicated') else 'сообщений'}, из них серьёзных {_fmt(faers['n_serious'])}. {FAERS_TAG}"
         )
         series = [r["reaction"] for r in rows if r["verdict"] == "возможная серия дублей"]
         if series:
