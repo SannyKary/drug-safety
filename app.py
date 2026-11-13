@@ -22,6 +22,8 @@ st.set_page_config(page_title="Досье безопасности препар�
 
 VERDICT_COLORS = {
     "кандидат в сигнал": "#d1495b",
+    "возможная серия дублей": "#8e6fb5",
+    "выделяется (нет инструкции для сверки)": "#e07a5f",
     "ожидаемая, подтверждается": "#edae49",
     "в инструкции, не выделяется": "#66a182",
     "фон": "#a0a0a0",
@@ -111,7 +113,12 @@ faers, rows = res.get("faers"), res.get("rows", [])
 # ---------- Метрики ----------
 m = st.columns(4)
 if faers:
-    m[0].metric("Сообщений в FAERS", f"{faers['n_reports']:,}".replace(",", " "))
+    if faers.get("deduplicated"):
+        m[0].metric("Уникальных случаев FAERS", f"{faers['n_reports']:,}".replace(",", " "),
+                    f"из {faers['n_raw']:,} сообщений, дублей {faers['n_duplicates']:,}".replace(",", " "),
+                    delta_color="off")
+    else:
+        m[0].metric("Сообщений в FAERS", f"{faers['n_reports']:,}".replace(",", " "))
     m[1].metric("Серьёзных", f"{faers['n_serious']:,}".replace(",", " "),
                 f"{faers['n_serious'] / faers['n_reports']:.0%}", delta_color="off")
     m[2].metric("С исходом смерть", f"{faers['n_deaths']:,}".replace(",", " "), delta_color="off")
@@ -145,6 +152,19 @@ with tab_sig:
         st.info("В FAERS нет сообщений по этому запросу.")
     else:
         df = pd.DataFrame(rows)
+        if faers.get("deduplicated"):
+            st.success(
+                f"Дубли удалены: из {faers['n_raw']} сообщений {faers['n_duplicates']} совпали "
+                "по ключевым полям (пол, возраст, страна, препараты, реакции) с другими и склеены. "
+                "Счёт ниже — по уникальным случаям."
+            )
+        elif faers.get("n_duplicates") is None:
+            st.info("Сообщений больше 1000 — счёт по данным openFDA без склейки дублей.")
+        if any(r.get("series") for r in rows):
+            st.warning(
+                "Несколько реакций встречаются почти одинаковое число раз — похоже на один случай, "
+                "присланный многократно. Такие реакции помечены «возможная серия дублей» и в сигналы не входят."
+            )
         chart = (
             alt.Chart(df)
             .mark_bar()

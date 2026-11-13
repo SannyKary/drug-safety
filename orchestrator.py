@@ -71,10 +71,15 @@ def run(drug_inputs, question=""):
             result["errors"].append(f"FAERS: {exc}")
             faers, n_all = None, 0
 
+    if not faers:
+        faers_note = "сообщений FAERS: 0"
+    elif faers.get("deduplicated"):
+        faers_note = f"сообщений FAERS: {faers['n_raw']}, после склейки дублей: {faers['n_reports']}"
+    else:
+        faers_note = f"сообщений FAERS: {faers['n_raw']}"
     trace.add(
         "Агенты DailyMed и FAERS", "параллельное выполнение", t,
-        f"инструкций: {len(labels)}, не найдено: {missing or 'нет'}; "
-        f"сообщений FAERS: {faers['n_reports'] if faers else 0}",
+        f"инструкций: {len(labels)}, не найдено: {missing or 'нет'}; {faers_note}",
     )
     result.update(labels=labels, missing=missing, faers=faers)
     if not labels and not faers:
@@ -116,12 +121,13 @@ def run(drug_inputs, question=""):
     facts = synthesizer.build_facts(labels, routed, faers, rows, interactions)
     summary, rounds = (None, [])
     if llm.available():
+        result["model"] = llm.model_name()
         summary, rounds = synthesizer.synthesize(names, question, facts, allowed, numbers)
     if summary is None:
         summary = synthesizer.fallback_summary(labels, routed, faers, rows, interactions)
         result["summary_by"] = "код (без LLM)"
     else:
-        result["summary_by"] = "LLM + критик"
+        result["summary_by"] = f"LLM ({result.get('model')}) + критик"
     trace.add("Синтезатор ⇄ Критик", "рефлексия", t,
               rounds or "LLM не подключена, сводка собрана кодом")
     result.update(summary=summary, critic_rounds=rounds, facts=facts)
