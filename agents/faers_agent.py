@@ -18,8 +18,8 @@ from . import openfda
 SOURCE_NAME = "FAERS (сообщения о нежелательных реакциях)"
 ENDPOINT = "drug/event"
 REACTION_FIELD = "patient.reaction.reactionmeddrapt.exact"
-DEDUP_LIMIT = 3000
-PAGE = 500
+DEDUP_LIMIT = 2000
+PAGE = 100
 
 
 def drug_search(drugs):
@@ -45,27 +45,31 @@ def _fingerprint(report):
 
 
 def _deduplicate(search, n_reports):
-    """Скачивает сообщения, склеивает дубли, считает реакции по случаям."""
-    # Страницы независимы — качаем параллельно
-    def page(skip):
-        data = openfda.get(ENDPOINT, search=search, limit=PAGE, skip=skip)
-        return (data or {}).get("results", [])
+    """Скачивает сообщения, склеивает дубли, считает реакции по случаям.
 
-    with ThreadPoolExecutor(max_workers=3) as pool:
-        reports = [r for chunk in pool.map(page, range(0, n_reports, PAGE)) for r in chunk]
-
+    Качаем небольшими страницами по очереди и от каждого сообщения
+    сразу оставляем только нужное: полный JSON сообщения FAERS весит
+    десятки килобайт, и тысяча таких целиком не влезает в память
+    бесплатного сервера.
+    """
     cases = {}
-    for r in reports:
-        cases.setdefault(_fingerprint(r), r)
+    n_loaded = 0
+    for skip in range(0, n_reports, PAGE):
+        data = openfda.get(ENDPOINT, search=search, limit=PAGE, skip=skip)
+        for r in (data or {}).get("results", []):
+            n_loaded += 1
+            fp = _fingerprint(r)
+            if fp not in cases:
+                cases[fp] = (str(r.get("serious")) == "1", str(r.get("seriousnessdeath")) == "1")
+        del data
 
     counts = Counter()
-    serious = deaths = 0
-    for r in cases.values():
-        for term in {x.get("reactionmeddrapt", "").upper() for x in r.get("patient", {}).get("reaction", [])}:
+    for fp in cases:
+        for term in fp[4]:  # набор реакций — последнее поле отпечатка
             counts[term] += 1
-        serious += str(r.get("serious")) == "1"
-        deaths += str(r.get("seriousnessdeath")) == "1"
-    return len(reports), len(cases), counts, serious, deaths
+    serious = sum(s for s, _ in cases.values())
+    deaths = sum(d for _, d in cases.values())
+    return n_loaded, len(cases), counts, serious, deaths
 
 
 def fetch(drugs, top=20):
