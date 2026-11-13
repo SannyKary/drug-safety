@@ -131,6 +131,8 @@ tab_sum, tab_sig, tab_label, tab_trace, tab_arch = st.tabs(
 # ---------- Сводка ----------
 with tab_sum:
     st.caption(f"Сводку написал: {res['summary_by']}. Каждый пункт ссылается на источник.")
+    if llm.available() and res["summary_by"].startswith("код"):
+        st.warning(f"Gemini не ответила, сводка собрана кодом. Причина: {llm.last_error}")
     st.markdown(res["summary"])
     for it in res.get("interactions", []):
         with st.expander(f"Цитата: инструкция {it['in_label_of']} о {it['mentions']}"):
@@ -159,7 +161,7 @@ with tab_sig:
                 "Счёт ниже — по уникальным случаям."
             )
         elif faers.get("n_duplicates") is None:
-            st.info("Сообщений больше 1000 — счёт по данным openFDA без склейки дублей.")
+            st.info("Сообщений больше 3000 — счёт по данным openFDA без склейки дублей.")
         if any(r.get("series") for r in rows):
             st.warning(
                 "Несколько реакций встречаются почти одинаковое число раз — похоже на один случай, "

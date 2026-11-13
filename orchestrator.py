@@ -121,13 +121,12 @@ def run(drug_inputs, question=""):
     facts = synthesizer.build_facts(labels, routed, faers, rows, interactions)
     summary, rounds = (None, [])
     if llm.available():
-        result["model"] = llm.model_name()
         summary, rounds = synthesizer.synthesize(names, question, facts, allowed, numbers)
     if summary is None:
         summary = synthesizer.fallback_summary(labels, routed, faers, rows, interactions)
         result["summary_by"] = "код (без LLM)"
     else:
-        result["summary_by"] = f"LLM ({result.get('model')}) + критик"
+        result["summary_by"] = f"LLM ({llm.used_model}) + критик"
     trace.add("Синтезатор ⇄ Критик", "рефлексия", t,
               rounds or "LLM не подключена, сводка собрана кодом")
     result.update(summary=summary, critic_rounds=rounds, facts=facts)
