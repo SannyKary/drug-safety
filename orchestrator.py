@@ -117,8 +117,8 @@ def run(drug_inputs, question=""):
     # 5. Синтезатор ⇄ критик
     t = time.time()
     allowed = {SECTIONS[f] for fields in routed.values() for f in fields}
-    numbers = synthesizer.allowed_numbers(faers, rows)
     facts = synthesizer.build_facts(labels, routed, faers, rows, interactions)
+    numbers = synthesizer.allowed_numbers(faers, rows, facts)
     summary, rounds = (None, [])
     if llm.available():
         summary, rounds = synthesizer.synthesize(names, question, facts, allowed, numbers)
