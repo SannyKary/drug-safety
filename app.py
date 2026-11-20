@@ -20,6 +20,13 @@ from agents.label_agent import SECTIONS  # noqa: E402
 
 st.set_page_config(page_title="Досье безопасности препарата", page_icon="💊", layout="wide")
 
+page = st.sidebar.radio("Раздел", ["Досье", "MCP-инструменты"])
+if page == "MCP-инструменты":
+    from mcp_tools.screen import render
+
+    render()
+    st.stop()
+
 VERDICT_COLORS = {
     "кандидат в сигнал": "#d1495b",
     "возможная серия дублей": "#8e6fb5",

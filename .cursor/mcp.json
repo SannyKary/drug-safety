@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "dossier-stdio": {
+      "command": "${workspaceFolder}/.venv/bin/python",
+      "args": ["-m", "mcp_tools.server"],
+      "cwd": "${workspaceFolder}"
+    },
+    "dossier-sse": {
+      "url": "http://127.0.0.1:8000/sse"
+    },
+    "dossier-remote": {
+      "url": "https://app.arca.inc/api/public/mcp"
+    }
+  }
+}
